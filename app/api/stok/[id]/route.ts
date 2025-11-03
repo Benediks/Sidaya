@@ -3,7 +3,7 @@ import { pool } from '@/lib/db';
 
 // PUT (Update) a Stok item
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const { Nama_Stok, Kategori_Stok, Jumlah, Satuan, Harga_Beli } = await req.json();
     const client = await pool.connect();
@@ -32,7 +32,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
 // DELETE a Stok item
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const client = await pool.connect();
     const result = await client.query('DELETE FROM "Stok" WHERE "ID_Stok" = $1 RETURNING *', [id]);

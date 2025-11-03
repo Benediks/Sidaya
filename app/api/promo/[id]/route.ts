@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth';
 
 // GET a single Promo with its details (for edit/detail modal)
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params;
+  const { id } = await params;
   try {
     const client = await pool.connect();
     
@@ -51,7 +51,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { id } = params;
+  const { id } = await params;
   const client = await pool.connect();
 
   try {
@@ -112,7 +112,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
   
-  const { id } = params;
+  const { id } = await params;
   try {
     const client = await pool.connect();
     // Thanks to "ON DELETE CASCADE" in the schema,
