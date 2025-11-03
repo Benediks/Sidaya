@@ -1,175 +1,236 @@
-import { Search, Plus, Edit, Trash2, View, Utensils, Coffee } from 'lucide-react'; // Menggunakan lucide-react untuk ikon
+'use client'; // <-- Make this a Client Component
 
-// Komponen Header Navigasi (untuk kemudahan, bisa dibuat terpisah di folder components)
+import { useState, useEffect } from 'react';
+import { Search, Plus, Edit, Trash2, View, Utensils, Coffee } from 'lucide-react';
+import { Stok, Menu } from '@/lib/types';
+import StokFormModal from '@/components/StokFormModal';
+// import MenuFormModal from '@/components/MenuFormModal';
+import DeleteConfirmModal from '@/components/DeleteConfirmModal';
+import { Toaster, toast } from 'react-hot-toast';
+
+// Define types for modal states
+type ModalState =
+  | { type: 'none' }
+  | { type: 'add-stok' }
+  | { type: 'edit-stok'; item: Stok }
+  | { type: 'delete-stok'; item: Stok }
+  | { type: 'add-menu' }
+  | { type: 'edit-menu'; item: Menu }
+  | { type: 'delete-menu'; item: Menu };
+
 export default function KelolaStokPage() {
+  const [stokList, setStokList] = useState<Stok[]>([]);
+  const [menuList, setMenuList] = useState<Menu[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [modal, setModal] = useState<ModalState>({ type: 'none' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Data Fetching
+  const fetchStok = async () => {
+    const res = await fetch('/api/stok');
+    const data = await res.json();
+    setStokList(data);
+  };
+
+  const fetchMenu = async () => {
+    const res = await fetch('/api/menu');
+    const data = await res.json();
+    setMenuList(data);
+  };
+
+  useEffect(() => {
+    setIsLoading(true);
+    Promise.all([fetchStok(), fetchMenu()]).finally(() => setIsLoading(false));
+  }, []);
+
+  const refreshData = () => {
+    fetchStok();
+    fetchMenu();
+  };
+
+  // --- Stok Handlers ---
+  const handleStokSubmit = async (data: any) => {
+    setIsSubmitting(true);
+    const isEditing = modal.type === 'edit-stok';
+    const url = isEditing ? `/api/stok/${(modal as any).item.ID_Stok}` : '/api/stok';
+    const method = isEditing ? 'PUT' : 'POST';
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) throw new Error('Gagal menyimpan stok');
+      
+      toast.success(isEditing ? 'Stok berhasil diubah!' : 'Stok berhasil ditambahkan!');
+      setModal({ type: 'none' });
+      refreshData();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteStok = async () => {
+    if (modal.type !== 'delete-stok') return;
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/stok/${modal.item.ID_Stok}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Gagal menghapus stok');
+
+      toast.success('Stok berhasil dihapus!');
+      setModal({ type: 'none' });
+      refreshData();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // --- Menu Handlers (Placeholder) ---
+  // You would create these just like the Stok Handlers
+  const handleMenuSubmit = (data: any) => {
+    console.log('Submitting menu', data);
+    // ... logic for add/edit menu
+  };
+
+  const handleDeleteMenu = () => {
+    if (modal.type !== 'delete-menu') return;
+    console.log('Deleting menu', modal.item);
+    // ... logic for delete menu
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      <main className="container mx-auto p-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Kelola Stok Section */}
-          <section className="rounded-lg bg-white p-6 shadow-md">
-            <h2 className="mb-4 text-2xl font-semibold text-gray-800">Kelola Stok</h2>
-            <div className="mb-4 flex items-center space-x-2">
-              <div className="relative flex-grow">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                  type="text"
-                  placeholder="Cari stok..."
-                  className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-4 focus:border-teal-500 focus:ring focus:ring-teal-200 focus:ring-opacity-50"
-                />
-              </div>
-              <button className="rounded-md bg-teal-500 px-4 py-2 font-medium text-white transition hover:bg-teal-600">
-                Stok Bahan
+    <>
+      <Toaster position="top-right" />
+      <div className="min-h-screen bg-gray-100">
+        <main className="container mx-auto p-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            
+            {/* Kelola Stok Section */}
+            <section className="rounded-lg bg-white p-6 shadow-md">
+              <h2 className="mb-4 text-2xl font-semibold text-gray-800">Kelola Stok</h2>
+              {/* ... Search and Filter buttons ... */}
+              <button
+                onClick={() => setModal({ type: 'add-stok' })}
+                className="mb-4 flex items-center rounded-md bg-green-500 px-4 py-2 font-medium text-white transition hover:bg-green-600"
+              >
+                <Plus size={20} className="mr-2" /> Tambah Stok
               </button>
-              <button className="rounded-md bg-gray-200 px-4 py-2 font-medium text-gray-700 transition hover:bg-gray-300">
-                Stok Barang
-              </button>
-            </div>
-
-            <button className="mb-4 flex items-center rounded-md bg-green-500 px-4 py-2 font-medium text-white transition hover:bg-green-600">
-              <Plus size={20} className="mr-2" /> Tambah Stok
-            </button>
-
-            <div className="overflow-x-auto rounded-md border border-gray-200">
-              <table className="min-w-full divide-y divide-gray-200 bg-white">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Nama</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Jumlah</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Satuan</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Harga Beli (Rp)</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Tanggal Masuk</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Tanggal Update</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {/* Contoh Baris Data */}
-                  <tr>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">12345</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">Kopi Sachet</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">1</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">Pcs</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">8000</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">1/1/2025</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">12/10/2025</td>
-                    <td className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-sm font-medium">
-                      <button className="text-teal-600 hover:text-teal-900">
-                        <Edit size={18} />
-                      </button>
-                      <button className="ml-2 text-red-600 hover:text-red-900">
-                        <Trash2 size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">22345</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">Air</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">500</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">ml</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">6000</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">1/1/2025</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">12/10/2025</td>
-                    <td className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-sm font-medium">
-                      <button className="text-teal-600 hover:text-teal-900">
-                        <Edit size={18} />
-                      </button>
-                      <button className="ml-2 text-red-600 hover:text-red-900">
-                        <Trash2 size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">32345</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">Granule</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">500</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">gram</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">2000</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">1/1/2025</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">12/10/2025</td>
-                    <td className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-sm font-medium">
-                      <button className="text-teal-600 hover:text-teal-900">
-                        <Edit size={18} />
-                      </button>
-                      <button className="ml-2 text-red-600 hover:text-red-900">
-                        <Trash2 size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                  {/* Tambahkan lebih banyak baris jika diperlukan */}
-                </tbody>
-              </table>
-              {/* Scrollbar kanan jika tabel terlalu panjang */}
-              <div className="absolute right-0 top-0 h-full w-2 bg-gray-200">
-                <div className="h-1/3 w-full rounded-full bg-teal-500"></div>
+              <div className="overflow-x-auto rounded-md border border-gray-200">
+                <table className="min-w-full divide-y divide-gray-200 bg-white">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Nama</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Jumlah</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Satuan</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Harga Beli</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {isLoading && <tr><td colSpan={6} className="p-4 text-center">Loading...</td></tr>}
+                    {!isLoading && stokList.map((stok) => (
+                      <tr key={stok.ID_Stok}>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{stok.ID_Stok}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{stok.Nama_Stok}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{stok.Jumlah}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{stok.Satuan}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{stok.Harga_Beli}</td>
+                        <td className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-sm font-medium">
+                          <button onClick={() => setModal({ type: 'edit-stok', item: stok })} className="text-teal-600 hover:text-teal-900">
+                            <Edit size={18} />
+                          </button>
+                          <button onClick={() => setModal({ type: 'delete-stok', item: stok })} className="ml-2 text-red-600 hover:text-red-900">
+                            <Trash2 size={18} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </div>
-          </section>
+            </section>
 
-          {/* Stok Menu Section */}
-          <section className="rounded-lg bg-white p-6 shadow-md">
-            <h2 className="mb-4 text-2xl font-semibold text-gray-800">Stok Menu</h2>
-            <div className="mb-4 flex items-center space-x-2">
-              <div className="relative flex-grow">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                  type="text"
-                  placeholder="Cari stok..."
-                  className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-4 focus:border-teal-500 focus:ring focus:ring-teal-200 focus:ring-opacity-50"
-                />
-              </div>
-              <button className="rounded-md bg-gray-200 p-2 text-gray-700 transition hover:bg-gray-300">
-                <Utensils size={20} /> {/* Ikon Makanan */}
+            {/* Stok Menu Section */}
+            <section className="rounded-lg bg-white p-6 shadow-md">
+               <h2 className="mb-4 text-2xl font-semibold text-gray-800">Stok Menu</h2>
+               {/* ... Search and Filter ... */}
+                <button
+                // onClick={() => setModal({ type: 'add-menu' })}
+                className="mb-4 flex items-center rounded-md bg-green-500 px-4 py-2 font-medium text-white transition hover:bg-green-600"
+              >
+                <Plus size={20} className="mr-2" /> Tambah Stok Menu
               </button>
-              <button className="rounded-md bg-gray-200 p-2 text-gray-700 transition hover:bg-gray-300">
-                <Coffee size={20} /> {/* Ikon Minuman */}
-              </button>
-            </div>
-
-            <button className="mb-4 flex items-center rounded-md bg-green-500 px-4 py-2 font-medium text-white transition hover:bg-green-600">
-              <Plus size={20} className="mr-2" /> Tambah Stok Menu
-            </button>
-
-            <div className="overflow-x-auto rounded-md border border-gray-200">
-              <table className="min-w-full divide-y divide-gray-200 bg-white">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Nama</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Jumlah</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {/* Contoh Baris Data */}
-                  <tr>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">M1234</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">Kopi Pahit</td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">1</td>
-                    <td className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-sm font-medium">
-                      <button className="text-teal-600 hover:text-teal-900">
-                        <Edit size={18} />
-                      </button>
-                      <button className="ml-2 text-red-600 hover:text-red-900">
-                        <Trash2 size={18} />
-                      </button>
-                      <button className="ml-2 text-teal-600 hover:text-teal-900">
-                        <View size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                  {/* Tambahkan lebih banyak baris jika diperlukan */}
-                </tbody>
-              </table>
-               {/* Scrollbar kanan jika tabel terlalu panjang */}
-              <div className="absolute right-0 top-0 h-full w-2 bg-gray-200">
-                <div className="h-1/3 w-full rounded-full bg-teal-500"></div>
+              <div className="overflow-x-auto rounded-md border border-gray-200">
+                <table className="min-w-full divide-y divide-gray-200 bg-white">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Nama</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Jumlah</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                     {isLoading && <tr><td colSpan={4} className="p-4 text-center">Loading...</td></tr>}
+                     {!isLoading && menuList.map((menu) => (
+                       <tr key={menu.ID_Menu}>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{menu.ID_Menu}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{menu.Nama_Menu}</td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{menu.Jumlah_Stok}</td>
+                        <td className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-sm font-medium">
+                          <button className="text-teal-600 hover:text-teal-900">
+                            <Edit size={18} />
+                          </button>
+                          <button className="ml-2 text-red-600 hover:text-red-900">
+                            <Trash2 size={18} />
+                          </button>
+                          <button className="ml-2 text-teal-600 hover:text-teal-900">
+                            <View size={18} />
+                          </button>
+                        </td>
+                      </tr>
+                     ))}
+                  </tbody>
+                </table>
               </div>
-            </div>
-          </section>
-        </div>
-      </main>
-    </div>
+            </section>
+          </div>
+        </main>
+      </div>
+
+      {/* --- Modals --- */}
+      <StokFormModal
+        isOpen={modal.type === 'add-stok' || modal.type === 'edit-stok'}
+        onClose={() => setModal({ type: 'none' })}
+        onSubmit={handleStokSubmit}
+        defaultValues={modal.type === 'edit-stok' ? modal.item : undefined}
+        isSubmitting={isSubmitting}
+      />
+      
+      {/* <MenuFormModal
+        isOpen={modal.type === 'add-menu' || modal.type === 'edit-menu'}
+        onClose={() => setModal({ type: 'none' })}
+        onSubmit={handleMenuSubmit}
+        defaultValues={modal.type === 'edit-menu' ? modal.item : undefined}
+        isSubmitting={isSubmitting}
+      /> 
+      */}
+
+      <DeleteConfirmModal
+        isOpen={modal.type === 'delete-stok' || modal.type === 'delete-menu'}
+        onClose={() => setModal({ type: 'none' })}
+        onConfirm={modal.type === 'delete-stok' ? handleDeleteStok : handleDeleteMenu}
+        itemName={modal.type === 'delete-stok' ? modal.item.Nama_Stok : (modal.type === 'delete-menu' ? modal.item.Nama_Menu : '')}
+        isDeleting={isSubmitting}
+      />
+    </>
   );
 }
