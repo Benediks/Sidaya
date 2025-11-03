@@ -1,10 +1,11 @@
-'use client'; // <-- Make this a Client Component
+'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2, View, Utensils, Coffee } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Eye } from 'lucide-react';
 import { Stok, Menu } from '@/lib/types';
 import StokFormModal from '@/components/StokFormModal';
 import MenuFormModal from '@/components/MenuFormModal';
+import MenuDetailModal from '@/components/MenuDetailModal';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 import { Toaster, toast } from 'react-hot-toast';
 
@@ -16,7 +17,8 @@ type ModalState =
   | { type: 'delete-stok'; item: Stok }
   | { type: 'add-menu' }
   | { type: 'edit-menu'; item: Menu }
-  | { type: 'delete-menu'; item: Menu };
+  | { type: 'delete-menu'; item: Menu }
+  | { type: 'view-menu'; item: Menu };
 
 export default function KelolaStokPage() {
   const [stokList, setStokList] = useState<Stok[]>([]);
@@ -27,15 +29,27 @@ export default function KelolaStokPage() {
 
   // Data Fetching
   const fetchStok = async () => {
-    const res = await fetch('/api/stok');
-    const data = await res.json();
-    setStokList(data);
+    try {
+      const res = await fetch('/api/stok');
+      if (!res.ok) throw new Error('Failed to fetch stok');
+      const data = await res.json();
+      setStokList(data);
+    } catch (error) {
+      console.error('Error fetching stok:', error);
+      toast.error('Gagal memuat data stok');
+    }
   };
 
   const fetchMenu = async () => {
-    const res = await fetch('/api/menu');
-    const data = await res.json();
-    setMenuList(data);
+    try {
+      const res = await fetch('/api/menu');
+      if (!res.ok) throw new Error('Failed to fetch menu');
+      const data = await res.json();
+      setMenuList(data);
+    } catch (error) {
+      console.error('Error fetching menu:', error);
+      toast.error('Gagal memuat data menu');
+    }
   };
 
   useEffect(() => {
@@ -92,37 +106,48 @@ export default function KelolaStokPage() {
     }
   };
 
-  // --- Menu Handlers (Placeholder) ---
-  // You would create these just like the Stok Handlers
+  // --- Menu Handlers ---
   const handleMenuSubmit = async (data: any) => {
-  setIsSubmitting(true);
-  const isEditing = modal.type === 'edit-menu';
-  const url = isEditing ? `/api/menu/${(modal as any).item.ID_Menu}` : '/api/menu';
-  const method = isEditing ? 'PUT' : 'POST';
+    setIsSubmitting(true);
+    const isEditing = modal.type === 'edit-menu';
+    const url = isEditing ? `/api/menu/${(modal as any).item.ID_Menu}` : '/api/menu';
+    const method = isEditing ? 'PUT' : 'POST';
 
-  try {
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
 
-    if (!res.ok) throw new Error('Gagal menyimpan menu');
-    
-    toast.success(isEditing ? 'Menu berhasil diubah!' : 'Menu berhasil ditambahkan!');
-    setModal({ type: 'none' });
-    refreshData();
-  } catch (error: any) {
-    toast.error(error.message);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+      if (!res.ok) throw new Error('Gagal menyimpan menu');
+      
+      toast.success(isEditing ? 'Menu berhasil diubah!' : 'Menu berhasil ditambahkan!');
+      setModal({ type: 'none' });
+      refreshData();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  const handleDeleteMenu = () => {
+  const handleDeleteMenu = async () => {
     if (modal.type !== 'delete-menu') return;
-    console.log('Deleting menu', modal.item);
-    // ... logic for delete menu
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/menu/${modal.item.ID_Menu}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Gagal menghapus menu');
+
+      toast.success('Menu berhasil dihapus!');
+      setModal({ type: 'none' });
+      refreshData();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -135,7 +160,6 @@ export default function KelolaStokPage() {
             {/* Kelola Stok Section */}
             <section className="rounded-lg bg-white p-6 shadow-md">
               <h2 className="mb-4 text-2xl font-semibold text-gray-800">Kelola Stok</h2>
-              {/* ... Search and Filter buttons ... */}
               <button
                 onClick={() => setModal({ type: 'add-stok' })}
                 className="mb-4 flex items-center rounded-md bg-green-500 px-4 py-2 font-medium text-white transition hover:bg-green-600"
@@ -180,9 +204,8 @@ export default function KelolaStokPage() {
 
             {/* Stok Menu Section */}
             <section className="rounded-lg bg-white p-6 shadow-md">
-               <h2 className="mb-4 text-2xl font-semibold text-gray-800">Stok Menu</h2>
-               {/* ... Search and Filter ... */}
-                <button
+              <h2 className="mb-4 text-2xl font-semibold text-gray-800">Stok Menu</h2>
+              <button
                 onClick={() => setModal({ type: 'add-menu' })}
                 className="mb-4 flex items-center rounded-md bg-green-500 px-4 py-2 font-medium text-white transition hover:bg-green-600"
               >
@@ -199,25 +222,37 @@ export default function KelolaStokPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
-                     {isLoading && <tr><td colSpan={4} className="p-4 text-center">Loading...</td></tr>}
-                     {!isLoading && menuList.map((menu) => (
-                       <tr key={menu.ID_Menu}>
+                    {isLoading && <tr><td colSpan={4} className="p-4 text-center">Loading...</td></tr>}
+                    {!isLoading && menuList.map((menu) => (
+                      <tr key={menu.ID_Menu}>
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{menu.ID_Menu}</td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{menu.Nama_Menu}</td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{menu.Jumlah_Stok}</td>
                         <td className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-sm font-medium">
-                          <button className="text-teal-600 hover:text-teal-900">
+                          <button 
+                            onClick={() => setModal({ type: 'edit-menu', item: menu })}
+                            className="text-teal-600 hover:text-teal-900"
+                            title="Edit"
+                          >
                             <Edit size={18} />
                           </button>
-                          <button className="ml-2 text-red-600 hover:text-red-900">
+                          <button 
+                            onClick={() => setModal({ type: 'delete-menu', item: menu })}
+                            className="ml-2 text-red-600 hover:text-red-900"
+                            title="Delete"
+                          >
                             <Trash2 size={18} />
                           </button>
-                          <button className="ml-2 text-teal-600 hover:text-teal-900">
-                            <View size={18} />
+                          <button 
+                            onClick={() => setModal({ type: 'view-menu', item: menu })}
+                            className="ml-2 text-blue-600 hover:text-blue-900"
+                            title="View Detail"
+                          >
+                            <Eye size={18} />
                           </button>
                         </td>
                       </tr>
-                     ))}
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -241,14 +276,23 @@ export default function KelolaStokPage() {
         onSubmit={handleMenuSubmit}
         defaultValues={modal.type === 'edit-menu' ? modal.item : undefined}
         isSubmitting={isSubmitting}
-      /> 
-     
+      />
+
+      <MenuDetailModal
+        isOpen={modal.type === 'view-menu'}
+        onClose={() => setModal({ type: 'none' })}
+        menu={modal.type === 'view-menu' ? modal.item : null}
+      />
 
       <DeleteConfirmModal
         isOpen={modal.type === 'delete-stok' || modal.type === 'delete-menu'}
         onClose={() => setModal({ type: 'none' })}
         onConfirm={modal.type === 'delete-stok' ? handleDeleteStok : handleDeleteMenu}
-        itemName={modal.type === 'delete-stok' ? modal.item.Nama_Stok : (modal.type === 'delete-menu' ? modal.item.Nama_Menu : '')}
+        itemName={
+          modal.type === 'delete-stok' 
+            ? modal.item.Nama_Stok 
+            : (modal.type === 'delete-menu' ? modal.item.Nama_Menu : '')
+        }
         isDeleting={isSubmitting}
       />
     </>
