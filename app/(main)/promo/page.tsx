@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit, Trash2, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { Promo } from '@/lib/types';
 import PromoFormModal from '@/components/PromoFormModal';
+import PromoDetailModal from '@/components/PromoDetailModal';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 import { Toaster, toast } from 'react-hot-toast';
 
@@ -11,7 +12,8 @@ type ModalState =
   | { type: 'none' }
   | { type: 'add' }
   | { type: 'edit'; item: Promo & { menuItems?: any[] } }
-  | { type: 'delete'; item: Promo };
+  | { type: 'delete'; item: Promo }
+  | { type: 'detail'; item: Promo };
 
 export default function KelolaPromoPage() {
   const [promos, setPromos] = useState<(Promo & { menu_count: string })[]>([]);
@@ -200,10 +202,25 @@ export default function KelolaPromoPage() {
                     <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-700">
                       {promo.menu_count} Menu
                     </span>
-                    <button onClick={() => openEditModal(promo)} className="text-teal-600 hover:text-teal-900">
+                    <button 
+                      onClick={() => setModal({ type: 'detail', item: promo })}
+                      className="text-blue-600 hover:text-blue-900"
+                      title="Detail"
+                    >
+                      <Eye size={18} />
+                    </button>
+                    <button 
+                      onClick={() => openEditModal(promo)} 
+                      className="text-teal-600 hover:text-teal-900"
+                      title="Edit"
+                    >
                       <Edit size={18} />
                     </button>
-                    <button onClick={() => setModal({ type: 'delete', item: promo })} className="text-red-600 hover:text-red-900">
+                    <button 
+                      onClick={() => setModal({ type: 'delete', item: promo })} 
+                      className="text-red-600 hover:text-red-900"
+                      title="Delete"
+                    >
                       <Trash2 size={18} />
                     </button>
                   </div>
@@ -282,6 +299,12 @@ export default function KelolaPromoPage() {
         onSubmit={handleSubmit}
         defaultPromo={modal.type === 'edit' ? modal.item : undefined}
         isSubmitting={isSubmitting}
+      />
+
+      <PromoDetailModal
+        isOpen={modal.type === 'detail'}
+        onClose={() => setModal({ type: 'none' })}
+        promo={modal.type === 'detail' ? modal.item : null}
       />
 
       <DeleteConfirmModal
