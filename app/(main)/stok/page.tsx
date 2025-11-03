@@ -30,6 +30,7 @@ export default function KelolaStokPage() {
   const [stokSearchQuery, setStokSearchQuery] = useState('');
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [stokFilter, setStokFilter] = useState<'all' | 'Stok Bahan' | 'Stok Barang'>('all');
+  const [menuFilter, setMenuFilter] = useState<'all' | 'Makanan' | 'Minuman'>('all');
 
   // Data Fetching
   const fetchStok = async () => {
@@ -75,8 +76,10 @@ export default function KelolaStokPage() {
   });
 
   const filteredMenuList = menuList.filter((menu) => {
-    return menu.Nama_Menu.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
-           menu.ID_Menu.toLowerCase().includes(menuSearchQuery.toLowerCase());
+    const matchesSearch = menu.Nama_Menu.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
+                         menu.ID_Menu.toLowerCase().includes(menuSearchQuery.toLowerCase());
+    const matchesFilter = menuFilter === 'all' || menu.Kategori_Menu === menuFilter;
+    return matchesSearch && matchesFilter;
   });
 
   // --- Stok Handlers ---
@@ -294,9 +297,9 @@ export default function KelolaStokPage() {
             <section className="rounded-lg bg-white p-6 shadow-md">
               <h2 className="mb-4 text-2xl font-semibold text-gray-800">Stok Menu</h2>
               
-              {/* Search */}
-              <div className="mb-4">
-                <div className="relative">
+              {/* Search and Filter */}
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+                <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
@@ -305,6 +308,38 @@ export default function KelolaStokPage() {
                     onChange={(e) => setMenuSearchQuery(e.target.value)}
                     className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-4 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500"
                   />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setMenuFilter('all')}
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+                      menuFilter === 'all'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Semua
+                  </button>
+                  <button
+                    onClick={() => setMenuFilter('Makanan')}
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+                      menuFilter === 'Makanan'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Makanan
+                  </button>
+                  <button
+                    onClick={() => setMenuFilter('Minuman')}
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+                      menuFilter === 'Minuman'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Minuman
+                  </button>
                 </div>
               </div>
 
