@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
   try {
     const { Nama_Stok, Kategori_Stok, Jumlah, Satuan, Harga_Beli } = await req.json();
-    const newId = `S${Math.floor(10000 + Math.random() * 90000)}`; // Dummy ID
+    const newId = `S${Math.floor(1000 + Math.random() * 9000)}`; // Dummy ID
     const client = await pool.connect();
     
     const query = `

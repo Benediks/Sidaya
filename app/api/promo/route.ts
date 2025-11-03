@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     const { Nama_Promo, Deskripsi, Tanggal_Mulai, Tanggal_Selesai, menuItems } = await req.json();
 
     // Generate a new promo ID
-    const newId = `P${Math.floor(10000 + Math.random() * 90000)}`;
+    const newId = `P${Math.floor(1000 + Math.random() * 9000)}`;
 
     // Start transaction
     await client.query('BEGIN');
