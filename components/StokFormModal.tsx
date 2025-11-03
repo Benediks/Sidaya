@@ -4,7 +4,7 @@ import { Stok } from '@/lib/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { StokSchema } from '@/lib/db';
+import { StokSchema } from '@/lib/schemas'; // <-- FIX: Import from safe 'schemas' file
 import { useEffect } from 'react';
 
 // This type is still correct and needed
@@ -26,21 +26,17 @@ export default function StokFormModal({
   isSubmitting,
 }: StokFormModalProps) {
   
-  // --- THIS IS THE FIX for handleSubmit error ---
-  // We remove `<StokFormData>` from useForm()
-  // The resolver will automatically infer the type for useForm.
+  // This is correct. No generic on useForm, let resolver infer.
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm({ // NO <StokFormData> generic here
+  } = useForm({
     resolver: zodResolver(StokSchema),
   });
-  // --- END OF FIX ---
 
-
-  // This useEffect is still correct and should be kept.
+  // This useEffect is correct.
   useEffect(() => {
     if (isOpen) {
       if (defaultValues) {
@@ -108,7 +104,6 @@ export default function StokFormModal({
               <label className="block text-sm font-medium text-gray-700">Jumlah</label>
               <input
                 type="number"
-                // --- THIS IS THE FIX for the resolver error ---
                 {...register('Jumlah', { valueAsNumber: true })}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
               />
@@ -118,7 +113,6 @@ export default function StokFormModal({
               <label className="block text-sm font-medium text-gray-700">Harga Beli (Rp)</label>
               <input
                 type="number"
-                // --- THIS IS THE FIX for the resolver error ---
                 {...register('Harga_Beli', { valueAsNumber: true })}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
               />

@@ -3,20 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { PromoSchema } from '@/lib/db'; // We'll use the basic schema
+import { PromoSchema } from '@/lib/schemas';
 import { Promo, Menu } from '@/lib/types';
 import { z } from 'zod';
 import { Plus, Trash2, X } from 'lucide-react';
 
-// Type for the form data, including the menu items
-type PromoFormData = z.infer<typeof PromoSchema> & {
-  menuItems: {
-    ID_Menu: string;
-    Nama_Menu: string;
-    Harga: number;
-    diskon_persen: number;
-  }[];
-};
+type PromoFormData = z.infer<typeof PromoSchema>;
 
 type PromoFormModalProps = {
   isOpen: boolean;
@@ -34,7 +26,7 @@ export default function PromoFormModal({
   isSubmitting,
 }: PromoFormModalProps) {
   const [allMenus, setAllMenus] = useState<Menu[]>([]);
-  const [menuToAdd, setMenuToAdd] = useState<string>(''); // Holds the ID_Menu from dropdown
+  const [menuToAdd, setMenuToAdd] = useState<string>('');
 
   const {
     register,
@@ -43,9 +35,8 @@ export default function PromoFormModal({
     reset,
     control,
     watch,
-    setValue,
-  } = useForm<PromoFormData>({
-    // resolver: zodResolver(PromoSchema), // Can't use this directly due to menuItems
+  } = useForm({
+    resolver: zodResolver(PromoSchema),
     defaultValues: {
       Nama_Promo: '',
       Deskripsi: '',
@@ -55,8 +46,7 @@ export default function PromoFormModal({
     },
   });
 
-  // 'useFieldArray' is a react-hook-form tool to manage dynamic lists
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control,
     name: 'menuItems',
   });
@@ -69,6 +59,9 @@ export default function PromoFormModal({
         if (!res.ok) throw new Error('Failed to fetch menus');
         const data = await res.json();
         setAllMenus(data);
+        if (data.length > 0) {
+          setMenuToAdd(data[0].ID_Menu);
+        }
       } catch (error) {
         console.error(error);
       }
@@ -78,24 +71,27 @@ export default function PromoFormModal({
 
   // Set form data when defaultPromo (for editing) is loaded
   useEffect(() => {
-    if (defaultPromo) {
-      reset({
-        Nama_Promo: defaultPromo.Nama_Promo,
-        Deskripsi: defaultPromo.Deskripsi || '',
-        Tanggal_Mulai: new Date(defaultPromo.Tanggal_Mulai).toISOString().split('T')[0],
-        Tanggal_Selesai: new Date(defaultPromo.Tanggal_Selesai).toISOString().split('T')[0],
-        menuItems: defaultPromo.menuItems || [],
-      });
-    } else {
-      reset({
-        Nama_Promo: '',
-        Deskripsi: '',
-        Tanggal_Mulai: '',
-        Tanggal_Selesai: '',
-        menuItems: [],
-      });
+    if (isOpen) {
+      if (defaultPromo) {
+        reset({
+          Nama_Promo: defaultPromo.Nama_Promo,
+          Deskripsi: defaultPromo.Deskripsi || '',
+          Tanggal_Mulai: new Date(defaultPromo.Tanggal_Mulai).toISOString().split('T')[0],
+          Tanggal_Selesai: new Date(defaultPromo.Tanggal_Selesai).toISOString().split('T')[0],
+          menuItems: defaultPromo.menuItems || [],
+        });
+      } else {
+        reset({
+          Nama_Promo: '',
+          Deskripsi: '',
+          Tanggal_Mulai: '',
+          Tanggal_Selesai: '',
+          menuItems: [],
+        });
+      }
     }
-  }, [defaultPromo, reset]);
+  }, [isOpen, defaultPromo, reset]);
+
 
   const handleClose = () => {
     reset();
@@ -106,16 +102,15 @@ export default function PromoFormModal({
     if (!menuToAdd) return;
     const menu = allMenus.find((m) => m.ID_Menu === menuToAdd);
     if (!menu) return;
-    // Prevent adding duplicates
-    if (fields.some((field: any) => field.ID_Menu === menu.ID_Menu)) return;
+    if (fields.some((field) => field.ID_Menu === menu.ID_Menu)) return;
 
     append({
       ID_Menu: menu.ID_Menu,
       Nama_Menu: menu.Nama_Menu,
       Harga: menu.Harga,
-      diskon_persen: 0, // Default discount
+      diskon_persen: 0,
     });
-    setMenuToAdd(''); // Reset dropdown
+    setMenuToAdd(allMenus[0]?.ID_Menu || '');
   };
 
   if (!isOpen) return null;
@@ -141,6 +136,7 @@ export default function PromoFormModal({
                 {...register('Nama_Promo')}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
               />
+              {errors.Nama_Promo && <p className="text-sm text-red-600">{errors.Nama_Promo.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Deskripsi</label>
@@ -158,6 +154,7 @@ export default function PromoFormModal({
                   {...register('Tanggal_Mulai')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                 />
+                {errors.Tanggal_Mulai && <p className="text-sm text-red-600">{errors.Tanggal_Mulai.message}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Jadwal Selesai</label>
@@ -166,6 +163,7 @@ export default function PromoFormModal({
                   {...register('Tanggal_Selesai')}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                 />
+                {errors.Tanggal_Selesai && <p className="text-sm text-red-600">{errors.Tanggal_Selesai.message}</p>}
               </div>
             </div>
           </div>
@@ -197,9 +195,9 @@ export default function PromoFormModal({
 
             {/* List of Added Menus */}
             <div className="space-y-2">
-              {fields.map((field: any, index) => {
-                const harga = field.Harga;
-                const diskon = watch(`menuItems.${index}.diskon_persen`) || 0;
+              {fields.map((field, index) => {
+                const harga = field.Harga || 0;
+                const diskon = Number(watch(`menuItems.${index}.diskon_persen`)) || 0;
                 const hargaDiskon = harga - harga * (diskon / 100);
 
                 return (
@@ -207,7 +205,7 @@ export default function PromoFormModal({
                     <div className="col-span-2">
                       <span className="font-medium">{field.Nama_Menu}</span>
                       <span className="block text-xs text-gray-500">
-                        Rp {new Intl.NumberFormat('id-ID').format(field.Harga)}
+                        Rp {new Intl.NumberFormat('id-ID').format(harga)}
                       </span>
                     </div>
                     <div>
@@ -217,6 +215,9 @@ export default function PromoFormModal({
                         {...register(`menuItems.${index}.diskon_persen`, { valueAsNumber: true })}
                         className="mt-1 block w-full rounded-md border-gray-300 p-1 text-sm shadow-sm"
                       />
+                      {errors.menuItems?.[index]?.diskon_persen && (
+                        <p className="text-sm text-red-600">{errors.menuItems?.[index]?.diskon_persen?.message}</p>
+                      )}
                     </div>
                     <div>
                       <label className="text-xs">Harga Diskon</label>
