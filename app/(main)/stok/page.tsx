@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Search, Plus, Edit, Trash2, View, Utensils, Coffee } from 'lucide-react';
 import { Stok, Menu } from '@/lib/types';
 import StokFormModal from '@/components/StokFormModal';
-// import MenuFormModal from '@/components/MenuFormModal';
+import MenuFormModal from '@/components/MenuFormModal';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 import { Toaster, toast } from 'react-hot-toast';
 
@@ -94,10 +94,30 @@ export default function KelolaStokPage() {
 
   // --- Menu Handlers (Placeholder) ---
   // You would create these just like the Stok Handlers
-  const handleMenuSubmit = (data: any) => {
-    console.log('Submitting menu', data);
-    // ... logic for add/edit menu
-  };
+  const handleMenuSubmit = async (data: any) => {
+  setIsSubmitting(true);
+  const isEditing = modal.type === 'edit-menu';
+  const url = isEditing ? `/api/menu/${(modal as any).item.ID_Menu}` : '/api/menu';
+  const method = isEditing ? 'PUT' : 'POST';
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    if (!res.ok) throw new Error('Gagal menyimpan menu');
+    
+    toast.success(isEditing ? 'Menu berhasil diubah!' : 'Menu berhasil ditambahkan!');
+    setModal({ type: 'none' });
+    refreshData();
+  } catch (error: any) {
+    toast.error(error.message);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const handleDeleteMenu = () => {
     if (modal.type !== 'delete-menu') return;
@@ -163,7 +183,7 @@ export default function KelolaStokPage() {
                <h2 className="mb-4 text-2xl font-semibold text-gray-800">Stok Menu</h2>
                {/* ... Search and Filter ... */}
                 <button
-                // onClick={() => setModal({ type: 'add-menu' })}
+                onClick={() => setModal({ type: 'add-menu' })}
                 className="mb-4 flex items-center rounded-md bg-green-500 px-4 py-2 font-medium text-white transition hover:bg-green-600"
               >
                 <Plus size={20} className="mr-2" /> Tambah Stok Menu
@@ -215,14 +235,14 @@ export default function KelolaStokPage() {
         isSubmitting={isSubmitting}
       />
       
-      {/* <MenuFormModal
+      <MenuFormModal
         isOpen={modal.type === 'add-menu' || modal.type === 'edit-menu'}
         onClose={() => setModal({ type: 'none' })}
         onSubmit={handleMenuSubmit}
         defaultValues={modal.type === 'edit-menu' ? modal.item : undefined}
         isSubmitting={isSubmitting}
       /> 
-      */}
+     
 
       <DeleteConfirmModal
         isOpen={modal.type === 'delete-stok' || modal.type === 'delete-menu'}
