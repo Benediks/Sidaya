@@ -1,3 +1,4 @@
+// lib/types.ts
 // These types match your PostgreSQL database schema
 
 export type Role = {
@@ -42,4 +43,36 @@ export type Stok = {
   Tanggal_Update: string;
   userId?: string | null;
   ID_Menu?: string | null;
+};
+
+// Junction table type for menu ingredients
+export type DetailMenu = {
+  ID_Detail: string;
+  ID_Menu: string;
+  ID_Stok: string;
+  Jumlah_Dibutuhkan: number;
+  created_at?: string;
+};
+
+// Extended menu type with ingredients
+export type MenuWithIngredients = Menu & {
+  ingredients: (DetailMenu & { Stok?: Stok })[];
+};
+
+// NEW: Transaction type
+export type Transaksi = {
+  ID_Transaksi: string;
+  ID_Menu: string;
+  Tanggal: string;
+  Jumlah: number;
+  Harga_Satuan: number;
+  Total: number;
+  Catatan?: string | null;
+  userId?: string | null;
+  created_at?: string;
+};
+
+// Extended transaction with menu details
+export type TransaksiWithMenu = Transaksi & {
+  Menu?: Menu;
 };

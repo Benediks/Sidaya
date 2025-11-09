@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction Excel Template Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        .content {
+            padding: 40px;
+        }
+        .info-box {
+            background: #f0fdf4;
+            border-left: 4px solid #10b981;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+        .info-box h3 {
+            color: #065f46;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        .info-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .info-box li {
+            padding: 8px 0;
+            color: #047857;
+            display: flex;
+            align-items: center;
+        }
+        .info-box li:before {
+            content: "✓";
+            color: #10b981;
+            font-weight: bold;
+            margin-right: 10px;
+            font-size: 1.2rem;
+        }
+        .example-table {
+            width: 100%;
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th {
+            background: #10b981;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e5e7eb;
+            color: #374151;
+        }
+        tr:hover {
+            background: #f9fafb;
+        }
+        .download-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 30px auto 0;
+            gap: 10px;
+        }
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+        }
+        .download-btn:active {
+            transform: translateY(0);
+        }
+        .icon {
+            font-size: 1.5rem;
+        }
+        .note {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+            color: #92400e;
+        }
+        .note strong {
+            color: #78350f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Sidaya Transaction Template</h1>
+            <p>Download template Excel untuk upload transaksi penjualan</p>
+        </div>
+        
+        <div class="content">
+            <div class="info-box">
+                <h3>Format Template</h3>
+                <ul>
+                    <li>ID_Transaksi: ID unik transaksi (auto-generated jika kosong)</li>
+                    <li>Tanggal: Format YYYY-MM-DD (contoh: 2025-11-09)</li>
+                    <li>Nama_Menu: Nama menu yang terjual (harus sesuai dengan database)</li>
+                    <li>Jumlah: Jumlah item yang terjual</li>
+                    <li>Harga_Satuan: Harga per item (opsional, akan diambil dari database)</li>
+                    <li>Total: Total harga (auto-calculated jika kosong)</li>
+                </ul>
+            </div>
+
+            <div class="example-table">
+                <h3 style="margin-bottom: 15px; color: #374151;">Contoh Data:</h3>
+                <table id="exampleTable">
+                    <thead>
+                        <tr>
+                            <th>ID_Transaksi</th>
+                            <th>Tanggal</th>
+                            <th>Nama_Menu</th>
+                            <th>Jumlah</th>
+                            <th>Harga_Satuan</th>
+                            <th>Total</th>
+                            <th>Catatan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>TRX001</td>
+                            <td>2025-11-09</td>
+                            <td>Kopi Manis</td>
+                            <td>2</td>
+                            <td>15000</td>
+                            <td>30000</td>
+                            <td>Pelanggan A</td>
+                        </tr>
+                        <tr>
+                            <td>TRX002</td>
+                            <td>2025-11-09</td>
+                            <td>Nasi Goreng</td>
+                            <td>1</td>
+                            <td>25000</td>
+                            <td>25000</td>
+                            <td>Takeaway</td>
+                        </tr>
+                        <tr>
+                            <td>TRX003</td>
+                            <td>2025-11-09</td>
+                            <td>Air Mineral</td>
+                            <td>3</td>
+                            <td>5000</td>
+                            <td>15000</td>
+                            <td>Dine in</td>
+                        </tr>
+                        <tr>
+                            <td>TRX004</td>
+                            <td>2025-11-10</td>
+                            <td>Teh Manis</td>
+                            <td>2</td>
+                            <td>8000</td>
+                            <td>16000</td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>TRX005</td>
+                            <td>2025-11-10</td>
+                            <td>Kopi Susu</td>
+                            <td>1</td>
+                            <td>18000</td>
+                            <td>18000</td>
+                            <td>Extra gula</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="note">
+                <strong>⚠️ Penting:</strong> Pastikan nama menu dalam file Excel sesuai dengan nama menu di database Anda. Sistem akan otomatis mencocokkan dan mengurangi stok bahan yang terkait.
+            </div>
+
+            <button class="download-btn" onclick="downloadTemplate()">
+                <span class="icon"></span>
+                Download Template Excel
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function downloadTemplate() {
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Sample data
+            const sampleData = [
+                {
+                    'ID_Transaksi': 'TRX001',
+                    'Tanggal': '2025-11-09',
+                    'Nama_Menu': 'Kopi Manis',
+                    'Jumlah': 2,
+                    'Harga_Satuan': 15000,
+                    'Total': 30000,
+                    'Catatan': 'Pelanggan A'
+                },
+                {
+                    'ID_Transaksi': 'TRX002',
+                    'Tanggal': '2025-11-09',
+                    'Nama_Menu': 'Nasi Goreng',
+                    'Jumlah': 1,
+                    'Harga_Satuan': 25000,
+                    'Total': 25000,
+                    'Catatan': 'Takeaway'
+                },
+                {
+                    'ID_Transaksi': 'TRX003',
+                    'Tanggal': '2025-11-09',
+                    'Nama_Menu': 'Air Mineral',
+                    'Jumlah': 3,
+                    'Harga_Satuan': 5000,
+                    'Total': 15000,
+                    'Catatan': 'Dine in'
+                },
+                {
+                    'ID_Transaksi': 'TRX004',
+                    'Tanggal': '2025-11-10',
+                    'Nama_Menu': 'Teh Manis',
+                    'Jumlah': 2,
+                    'Harga_Satuan': 8000,
+                    'Total': 16000,
+                    'Catatan': ''
+                },
+                {
+                    'ID_Transaksi': 'TRX005',
+                    'Tanggal': '2025-11-10',
+                    'Nama_Menu': 'Kopi Susu',
+                    'Jumlah': 1,
+                    'Harga_Satuan': 18000,
+                    'Total': 18000,
+                    'Catatan': 'Extra gula'
+                }
+            ];
+            
+            // Create worksheet from sample data
+            const ws = XLSX.utils.json_to_sheet(sampleData);
+            
+            // Set column widths
+            ws['!cols'] = [
+                { wch: 15 }, // ID_Transaksi
+                { wch: 12 }, // Tanggal
+                { wch: 20 }, // Nama_Menu
+                { wch: 10 }, // Jumlah
+                { wch: 15 }, // Harga_Satuan
+                { wch: 15 }, // Total
+                { wch: 20 }  // Catatan
+            ];
+            
+            // Add worksheet to workbook
+            XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
+            
+            // Create instructions sheet
+            const instructions = [
+                { 'Kolom': 'ID_Transaksi', 'Deskripsi': 'ID unik transaksi (opsional, auto-generated jika kosong)', 'Contoh': 'TRX001' },
+                { 'Kolom': 'Tanggal', 'Deskripsi': 'Tanggal transaksi format YYYY-MM-DD', 'Contoh': '2025-11-09' },
+                { 'Kolom': 'Nama_Menu', 'Deskripsi': 'Nama menu yang terjual (HARUS sesuai database)', 'Contoh': 'Kopi Manis' },
+                { 'Kolom': 'Jumlah', 'Deskripsi': 'Jumlah item yang terjual', 'Contoh': '2' },
+                { 'Kolom': 'Harga_Satuan', 'Deskripsi': 'Harga per item (opsional)', 'Contoh': '15000' },
+                { 'Kolom': 'Total', 'Deskripsi': 'Total harga (opsional, auto-calculated)', 'Contoh': '30000' },
+                { 'Kolom': 'Catatan', 'Deskripsi': 'Catatan tambahan (opsional)', 'Contoh': 'Pelanggan VIP' }
+            ];
+            
+            const wsInstructions = XLSX.utils.json_to_sheet(instructions);
+            wsInstructions['!cols'] = [
+                { wch: 20 },
+                { wch: 50 },
+                { wch: 20 }
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, wsInstructions, 'Instructions');
+            
+            // Generate file
+            XLSX.writeFile(wb, 'Sidaya_Transaction_Template.xlsx');
+        }
+    </script>
+</body>
+</html>

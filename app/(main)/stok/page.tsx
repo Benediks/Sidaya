@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Eye, Upload, Download } from 'lucide-react';
 import { Stok, Menu } from '@/lib/types';
 import StokFormModal from '@/components/StokFormModal';
 import MenuFormModal from '@/components/MenuFormModal';
 import MenuDetailModal from '@/components/MenuDetailModal';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal';
+import TransactionUploadModal from '@/components/TransactionUploadModal';
+import ExportStockButton from '@/components/ExportStockButton';
 import { Toaster, toast } from 'react-hot-toast';
 
 type ModalState =
@@ -17,7 +19,8 @@ type ModalState =
   | { type: 'add-menu' }
   | { type: 'edit-menu'; item: Menu }
   | { type: 'delete-menu'; item: Menu }
-  | { type: 'view-menu'; item: Menu };
+  | { type: 'view-menu'; item: Menu }
+  | { type: 'upload-transaction' };
 
 export default function KelolaStokPage() {
   const [stokList, setStokList] = useState<Stok[]>([]);
@@ -170,11 +173,28 @@ export default function KelolaStokPage() {
     }
   };
 
+  const handleTransactionUploadSuccess = () => {
+    toast.success('Transaksi berhasil diproses!');
+    refreshData();
+  };
+
   return (
     <>
       <Toaster position="top-right" />
       <div className="min-h-screen bg-gray-100">
         <main className="container mx-auto p-6">
+          {/* Export and Upload Buttons */}
+          <div className="mb-6 flex justify-end gap-3">
+            <ExportStockButton />
+            <button
+              onClick={() => setModal({ type: 'upload-transaction' })}
+              className="flex items-center gap-2 rounded-md bg-blue-600 px-6 py-3 font-medium text-white shadow-lg transition hover:bg-blue-700"
+            >
+              <Upload size={20} />
+              Upload Transaksi Penjualan
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             
             {/* Kelola Stok Section */}
@@ -446,6 +466,12 @@ export default function KelolaStokPage() {
             : (modal.type === 'delete-menu' ? modal.item.Nama_Menu : '')
         }
         isDeleting={isSubmitting}
+      />
+
+      <TransactionUploadModal
+        isOpen={modal.type === 'upload-transaction'}
+        onClose={() => setModal({ type: 'none' })}
+        onSuccess={handleTransactionUploadSuccess}
       />
     </>
   );
