@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2, Eye, Upload, Download } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Eye, Upload, Download, ArrowUpDown, AlertTriangle } from 'lucide-react';
 import { Stok, Menu } from '@/lib/types';
 import StokFormModal from '@/components/StokFormModal';
 import MenuFormModal from '@/components/MenuFormModal';
@@ -22,6 +22,11 @@ type ModalState =
   | { type: 'view-menu'; item: Menu }
   | { type: 'upload-transaction' };
 
+type SortConfig = {
+  key: string;
+  direction: 'asc' | 'desc';
+};
+
 export default function KelolaStokPage() {
   const [stokList, setStokList] = useState<Stok[]>([]);
   const [menuList, setMenuList] = useState<Menu[]>([]);
@@ -34,6 +39,14 @@ export default function KelolaStokPage() {
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [stokFilter, setStokFilter] = useState<'all' | 'Stok Bahan' | 'Stok Barang'>('all');
   const [menuFilter, setMenuFilter] = useState<'all' | 'Makanan' | 'Minuman'>('all');
+
+  // Sort states
+  const [stokSort, setStokSort] = useState<SortConfig>({ key: 'ID_Stok', direction: 'asc' });
+  const [menuSort, setMenuSort] = useState<SortConfig>({ key: 'ID_Menu', direction: 'asc' });
+
+  // Low stock thresholds
+  const LOW_STOCK_THRESHOLD = 5;
+  const LOW_MENU_STOCK_THRESHOLD = 3;
 
   // Data Fetching
   const fetchStok = async () => {
@@ -70,20 +83,83 @@ export default function KelolaStokPage() {
     fetchMenu();
   };
 
-  // Filter functions
-  const filteredStokList = stokList.filter((stok) => {
-    const matchesSearch = stok.Nama_Stok.toLowerCase().includes(stokSearchQuery.toLowerCase()) ||
-                         stok.ID_Stok.toLowerCase().includes(stokSearchQuery.toLowerCase());
-    const matchesFilter = stokFilter === 'all' || stok.Kategori_Stok === stokFilter;
-    return matchesSearch && matchesFilter;
-  });
+  // Get stock status
+  const getStockStatus = (jumlah: number) => {
+    // Ensure jumlah is treated as a number
+    const qty = Number(jumlah);
+    if (qty === 0 || !jumlah) return { label: 'Habis', color: 'bg-red-100 text-red-800', icon: true };
+    if (qty <= LOW_STOCK_THRESHOLD) return { label: 'Stok Rendah', color: 'bg-yellow-100 text-yellow-800', icon: true };
+    return { label: 'Normal', color: 'bg-green-100 text-green-800', icon: false };
+  };
 
-  const filteredMenuList = menuList.filter((menu) => {
-    const matchesSearch = menu.Nama_Menu.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
-                         menu.ID_Menu.toLowerCase().includes(menuSearchQuery.toLowerCase());
-    const matchesFilter = menuFilter === 'all' || menu.Kategori_Menu === menuFilter;
-    return matchesSearch && matchesFilter;
-  });
+  const getMenuStockStatus = (jumlah: number) => {
+    // Ensure jumlah is treated as a number
+    const qty = Number(jumlah);
+    if (qty === 0 || !jumlah) return { label: 'Habis', color: 'bg-red-100 text-red-800', icon: true };
+    if (qty <= LOW_MENU_STOCK_THRESHOLD) return { label: 'Stok Rendah', color: 'bg-yellow-100 text-yellow-800', icon: true };
+    return { label: 'Normal', color: 'bg-green-100 text-green-800', icon: false };
+  };
+
+  // Sort function
+  const handleSort = (key: string, type: 'stok' | 'menu') => {
+    if (type === 'stok') {
+      const direction = stokSort.key === key && stokSort.direction === 'asc' ? 'desc' : 'asc';
+      setStokSort({ key, direction });
+    } else {
+      const direction = menuSort.key === key && menuSort.direction === 'asc' ? 'desc' : 'asc';
+      setMenuSort({ key, direction });
+    }
+  };
+
+  // Sort data helper
+  const sortData = <T extends Record<string, any>>(data: T[], sortConfig: SortConfig): T[] => {
+    return [...data].sort((a, b) => {
+      const aVal = a[sortConfig.key];
+      const bVal = b[sortConfig.key];
+
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+
+      const aStr = String(aVal).toLowerCase();
+      const bStr = String(bVal).toLowerCase();
+      
+      if (sortConfig.direction === 'asc') {
+        return aStr.localeCompare(bStr);
+      } else {
+        return bStr.localeCompare(aStr);
+      }
+    });
+  };
+
+  // Filter and sort functions
+  const filteredStokList = sortData(
+    stokList.filter((stok) => {
+      const matchesSearch = stok.Nama_Stok.toLowerCase().includes(stokSearchQuery.toLowerCase()) ||
+                           stok.ID_Stok.toLowerCase().includes(stokSearchQuery.toLowerCase());
+      const matchesFilter = stokFilter === 'all' || stok.Kategori_Stok === stokFilter;
+      return matchesSearch && matchesFilter;
+    }),
+    stokSort
+  );
+
+  const filteredMenuList = sortData(
+    menuList.filter((menu) => {
+      const matchesSearch = menu.Nama_Menu.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
+                           menu.ID_Menu.toLowerCase().includes(menuSearchQuery.toLowerCase());
+      const matchesFilter = menuFilter === 'all' || menu.Kategori_Menu === menuFilter;
+      return matchesSearch && matchesFilter;
+    }),
+    menuSort
+  );
+
+  // Sort indicator component
+  const SortIndicator = ({ columnKey, currentSort }: { columnKey: string; currentSort: SortConfig }) => (
+    <ArrowUpDown 
+      size={14} 
+      className={`ml-1 inline-block ${currentSort.key === columnKey ? 'text-green-600' : 'text-gray-400'}`}
+    />
+  );
 
   // --- Stok Handlers ---
   const handleStokSubmit = async (data: any) => {
@@ -259,55 +335,89 @@ export default function KelolaStokPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Nama</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Jumlah</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Satuan</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Harga Beli</th>
+                      <th 
+                        className="cursor-pointer px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                        onClick={() => handleSort('Nama_Stok', 'stok')}
+                      >
+                        Nama
+                        <SortIndicator columnKey="Nama_Stok" currentSort={stokSort} />
+                      </th>
+                      <th 
+                        className="cursor-pointer px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                        onClick={() => handleSort('Jumlah', 'stok')}
+                      >
+                        Jumlah
+                        <SortIndicator columnKey="Jumlah" currentSort={stokSort} />
+                      </th>
+                      <th 
+                        className="cursor-pointer px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                        onClick={() => handleSort('Satuan', 'stok')}
+                      >
+                        Satuan
+                        <SortIndicator columnKey="Satuan" currentSort={stokSort} />
+                      </th>
+                      <th 
+                        className="cursor-pointer px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                        onClick={() => handleSort('Harga_Beli', 'stok')}
+                      >
+                        Harga Beli
+                        <SortIndicator columnKey="Harga_Beli" currentSort={stokSort} />
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
                     {isLoading && (
                       <tr>
-                        <td colSpan={6} className="p-4 text-center text-gray-500">
+                        <td colSpan={7} className="p-4 text-center text-gray-500">
                           Loading...
                         </td>
                       </tr>
                     )}
                     {!isLoading && filteredStokList.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="p-4 text-center text-gray-500">
+                        <td colSpan={7} className="p-4 text-center text-gray-500">
                           Tidak ada data stok
                         </td>
                       </tr>
                     )}
-                    {!isLoading && filteredStokList.map((stok) => (
-                      <tr key={stok.ID_Stok} className="hover:bg-gray-50">
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{stok.ID_Stok}</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{stok.Nama_Stok}</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{stok.Jumlah}</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{stok.Satuan}</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
-                          Rp {new Intl.NumberFormat('id-ID').format(stok.Harga_Beli)}
-                        </td>
-                        <td className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-sm font-medium">
-                          <button 
-                            onClick={() => setModal({ type: 'edit-stok', item: stok })} 
-                            className="text-teal-600 hover:text-teal-900"
-                            title="Edit"
-                          >
-                            <Edit size={18} />
-                          </button>
-                          <button 
-                            onClick={() => setModal({ type: 'delete-stok', item: stok })} 
-                            className="ml-2 text-red-600 hover:text-red-900"
-                            title="Delete"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {!isLoading && filteredStokList.map((stok) => {
+                      const status = getStockStatus(stok.Jumlah);
+                      return (
+                        <tr key={stok.ID_Stok} className="hover:bg-gray-50">
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{stok.ID_Stok}</td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{stok.Nama_Stok}</td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{stok.Jumlah}</td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{stok.Satuan}</td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                            Rp {new Intl.NumberFormat('id-ID').format(stok.Harga_Beli)}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm">
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${status.color}`}>
+                              {status.icon && <AlertTriangle size={12} />}
+                              {status.label}
+                            </span>
+                          </td>
+                          <td className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-sm font-medium">
+                            <button 
+                              onClick={() => setModal({ type: 'edit-stok', item: stok })} 
+                              className="text-teal-600 hover:text-teal-900"
+                              title="Edit"
+                            >
+                              <Edit size={18} />
+                            </button>
+                            <button 
+                              onClick={() => setModal({ type: 'delete-stok', item: stok })} 
+                              className="ml-2 text-red-600 hover:text-red-900"
+                              title="Delete"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -375,56 +485,78 @@ export default function KelolaStokPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Nama</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Jumlah</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"></th>
+                      <th 
+                        className="cursor-pointer px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                        onClick={() => handleSort('Nama_Menu', 'menu')}
+                      >
+                        Nama
+                        <SortIndicator columnKey="Nama_Menu" currentSort={menuSort} />
+                      </th>
+                      <th 
+                        className="cursor-pointer px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
+                        onClick={() => handleSort('Jumlah_Stok', 'menu')}
+                      >
+                        Jumlah
+                        <SortIndicator columnKey="Jumlah_Stok" currentSort={menuSort} />
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
+                      <th className="px-6 py-3"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
                     {isLoading && (
                       <tr>
-                        <td colSpan={4} className="p-4 text-center text-gray-500">
+                        <td colSpan={5} className="p-4 text-center text-gray-500">
                           Loading...
                         </td>
                       </tr>
                     )}
                     {!isLoading && filteredMenuList.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="p-4 text-center text-gray-500">
+                        <td colSpan={5} className="p-4 text-center text-gray-500">
                           Tidak ada data menu
                         </td>
                       </tr>
                     )}
-                    {!isLoading && filteredMenuList.map((menu) => (
-                      <tr key={menu.ID_Menu} className="hover:bg-gray-50">
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{menu.ID_Menu}</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{menu.Nama_Menu}</td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{menu.Jumlah_Stok}</td>
-                        <td className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-sm font-medium">
-                          <button 
-                            onClick={() => setModal({ type: 'edit-menu', item: menu })}
-                            className="text-teal-600 hover:text-teal-900"
-                            title="Edit"
-                          >
-                            <Edit size={18} />
-                          </button>
-                          <button 
-                            onClick={() => setModal({ type: 'delete-menu', item: menu })}
-                            className="ml-2 text-red-600 hover:text-red-900"
-                            title="Delete"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                          <button 
-                            onClick={() => setModal({ type: 'view-menu', item: menu })}
-                            className="ml-2 text-blue-600 hover:text-blue-900"
-                            title="View Detail"
-                          >
-                            <Eye size={18} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {!isLoading && filteredMenuList.map((menu) => {
+                      const status = getMenuStockStatus(menu.Jumlah_Stok);
+                      return (
+                        <tr key={menu.ID_Menu} className="hover:bg-gray-50">
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{menu.ID_Menu}</td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{menu.Nama_Menu}</td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">{menu.Jumlah_Stok}</td>
+                          <td className="whitespace-nowrap px-6 py-4 text-sm">
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${status.color}`}>
+                              {status.icon && <AlertTriangle size={12} />}
+                              {status.label}
+                            </span>
+                          </td>
+                          <td className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-sm font-medium">
+                            <button 
+                              onClick={() => setModal({ type: 'edit-menu', item: menu })}
+                              className="text-teal-600 hover:text-teal-900"
+                              title="Edit"
+                            >
+                              <Edit size={18} />
+                            </button>
+                            <button 
+                              onClick={() => setModal({ type: 'delete-menu', item: menu })}
+                              className="ml-2 text-red-600 hover:text-red-900"
+                              title="Delete"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                            <button 
+                              onClick={() => setModal({ type: 'view-menu', item: menu })}
+                              className="ml-2 text-blue-600 hover:text-blue-900"
+                              title="View Detail"
+                            >
+                              <Eye size={18} />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
