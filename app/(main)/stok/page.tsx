@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Plus, Edit, Trash2, Eye, Upload, Download, ArrowUpDown, AlertTriangle } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Eye, Upload, Download, ArrowUpDown, AlertTriangle, History } from 'lucide-react';
 import { Stok, Menu } from '@/lib/types';
 import StokFormModal from '@/components/StokFormModal';
 import MenuFormModal from '@/components/MenuFormModal';
@@ -10,6 +10,7 @@ import DeleteConfirmModal from '@/components/DeleteConfirmModal';
 import TransactionUploadModal from '@/components/TransactionUploadModal';
 import ExportStockButton from '@/components/ExportStockButton';
 import { Toaster, toast } from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
 
 type ModalState =
   | { type: 'none' }
@@ -28,12 +29,14 @@ type SortConfig = {
 };
 
 export default function KelolaStokPage() {
+  const router = useRouter(); // ✅ Moved inside component
+  
   const [stokList, setStokList] = useState<Stok[]>([]);
   const [menuList, setMenuList] = useState<Menu[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Search states
   const [stokSearchQuery, setStokSearchQuery] = useState('');
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
@@ -85,7 +88,6 @@ export default function KelolaStokPage() {
 
   // Get stock status
   const getStockStatus = (jumlah: number) => {
-    // Ensure jumlah is treated as a number
     const qty = Number(jumlah);
     if (qty === 0 || !jumlah) return { label: 'Habis', color: 'bg-red-100 text-red-800', icon: true };
     if (qty <= LOW_STOCK_THRESHOLD) return { label: 'Stok Rendah', color: 'bg-yellow-100 text-yellow-800', icon: true };
@@ -93,7 +95,6 @@ export default function KelolaStokPage() {
   };
 
   const getMenuStockStatus = (jumlah: number) => {
-    // Ensure jumlah is treated as a number
     const qty = Number(jumlah);
     if (qty === 0 || !jumlah) return { label: 'Habis', color: 'bg-red-100 text-red-800', icon: true };
     if (qty <= LOW_MENU_STOCK_THRESHOLD) return { label: 'Stok Rendah', color: 'bg-yellow-100 text-yellow-800', icon: true };
@@ -123,7 +124,7 @@ export default function KelolaStokPage() {
 
       const aStr = String(aVal).toLowerCase();
       const bStr = String(bVal).toLowerCase();
-      
+
       if (sortConfig.direction === 'asc') {
         return aStr.localeCompare(bStr);
       } else {
@@ -136,7 +137,7 @@ export default function KelolaStokPage() {
   const filteredStokList = sortData(
     stokList.filter((stok) => {
       const matchesSearch = stok.Nama_Stok.toLowerCase().includes(stokSearchQuery.toLowerCase()) ||
-                           stok.ID_Stok.toLowerCase().includes(stokSearchQuery.toLowerCase());
+        stok.ID_Stok.toLowerCase().includes(stokSearchQuery.toLowerCase());
       const matchesFilter = stokFilter === 'all' || stok.Kategori_Stok === stokFilter;
       return matchesSearch && matchesFilter;
     }),
@@ -146,7 +147,7 @@ export default function KelolaStokPage() {
   const filteredMenuList = sortData(
     menuList.filter((menu) => {
       const matchesSearch = menu.Nama_Menu.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
-                           menu.ID_Menu.toLowerCase().includes(menuSearchQuery.toLowerCase());
+        menu.ID_Menu.toLowerCase().includes(menuSearchQuery.toLowerCase());
       const matchesFilter = menuFilter === 'all' || menu.Kategori_Menu === menuFilter;
       return matchesSearch && matchesFilter;
     }),
@@ -155,8 +156,8 @@ export default function KelolaStokPage() {
 
   // Sort indicator component
   const SortIndicator = ({ columnKey, currentSort }: { columnKey: string; currentSort: SortConfig }) => (
-    <ArrowUpDown 
-      size={14} 
+    <ArrowUpDown
+      size={14}
       className={`ml-1 inline-block ${currentSort.key === columnKey ? 'text-green-600' : 'text-gray-400'}`}
     />
   );
@@ -176,7 +177,7 @@ export default function KelolaStokPage() {
       });
 
       if (!res.ok) throw new Error('Gagal menyimpan stok');
-      
+
       toast.success(isEditing ? 'Stok berhasil diubah!' : 'Stok berhasil ditambahkan!');
       setModal({ type: 'none' });
       refreshData();
@@ -220,7 +221,7 @@ export default function KelolaStokPage() {
       });
 
       if (!res.ok) throw new Error('Gagal menyimpan menu');
-      
+
       toast.success(isEditing ? 'Menu berhasil diubah!' : 'Menu berhasil ditambahkan!');
       setModal({ type: 'none' });
       refreshData();
@@ -259,9 +260,18 @@ export default function KelolaStokPage() {
       <Toaster position="top-right" />
       <div className="min-h-screen bg-gray-100">
         <main className="container mx-auto p-6">
-          {/* Export and Upload Buttons */}
+          {/* Export, Upload, and History Buttons - ✅ FIXED */}
           <div className="mb-6 flex justify-end gap-3">
+            <button
+              onClick={() => router.push('/activity-logs')}
+              className="flex items-center gap-2 rounded-md bg-purple-600 px-6 py-3 font-medium text-white shadow-lg transition hover:bg-purple-700"
+            >
+              <History size={20} />
+              Riwayat Aktivitas
+            </button>
+            
             <ExportStockButton />
+            
             <button
               onClick={() => setModal({ type: 'upload-transaction' })}
               className="flex items-center gap-2 rounded-md bg-blue-600 px-6 py-3 font-medium text-white shadow-lg transition hover:bg-blue-700"
@@ -272,11 +282,11 @@ export default function KelolaStokPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            
+
             {/* Kelola Stok Section */}
             <section className="rounded-lg bg-white p-6 shadow-md">
               <h2 className="mb-4 text-2xl font-semibold text-gray-800">Kelola Stok</h2>
-              
+
               {/* Search and Filter */}
               <div className="mb-4 flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
@@ -292,31 +302,28 @@ export default function KelolaStokPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setStokFilter('all')}
-                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${
-                      stokFilter === 'all'
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${stokFilter === 'all'
                         ? 'bg-green-500 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                      }`}
                   >
                     Semua
                   </button>
                   <button
                     onClick={() => setStokFilter('Stok Bahan')}
-                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${
-                      stokFilter === 'Stok Bahan'
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${stokFilter === 'Stok Bahan'
                         ? 'bg-green-500 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                      }`}
                   >
                     Stok Bahan
                   </button>
                   <button
                     onClick={() => setStokFilter('Stok Barang')}
-                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${
-                      stokFilter === 'Stok Barang'
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${stokFilter === 'Stok Barang'
                         ? 'bg-green-500 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                      }`}
                   >
                     Stok Barang
                   </button>
@@ -335,28 +342,28 @@ export default function KelolaStokPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">ID</th>
-                      <th 
+                      <th
                         className="cursor-pointer px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
                         onClick={() => handleSort('Nama_Stok', 'stok')}
                       >
                         Nama
                         <SortIndicator columnKey="Nama_Stok" currentSort={stokSort} />
                       </th>
-                      <th 
+                      <th
                         className="cursor-pointer px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
                         onClick={() => handleSort('Jumlah', 'stok')}
                       >
                         Jumlah
                         <SortIndicator columnKey="Jumlah" currentSort={stokSort} />
                       </th>
-                      <th 
+                      <th
                         className="cursor-pointer px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
                         onClick={() => handleSort('Satuan', 'stok')}
                       >
                         Satuan
                         <SortIndicator columnKey="Satuan" currentSort={stokSort} />
                       </th>
-                      <th 
+                      <th
                         className="cursor-pointer px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
                         onClick={() => handleSort('Harga_Beli', 'stok')}
                       >
@@ -400,15 +407,15 @@ export default function KelolaStokPage() {
                             </span>
                           </td>
                           <td className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-sm font-medium">
-                            <button 
-                              onClick={() => setModal({ type: 'edit-stok', item: stok })} 
+                            <button
+                              onClick={() => setModal({ type: 'edit-stok', item: stok })}
                               className="text-teal-600 hover:text-teal-900"
                               title="Edit"
                             >
                               <Edit size={18} />
                             </button>
-                            <button 
-                              onClick={() => setModal({ type: 'delete-stok', item: stok })} 
+                            <button
+                              onClick={() => setModal({ type: 'delete-stok', item: stok })}
                               className="ml-2 text-red-600 hover:text-red-900"
                               title="Delete"
                             >
@@ -426,7 +433,7 @@ export default function KelolaStokPage() {
             {/* Stok Menu Section */}
             <section className="rounded-lg bg-white p-6 shadow-md">
               <h2 className="mb-4 text-2xl font-semibold text-gray-800">Stok Menu</h2>
-              
+
               {/* Search and Filter */}
               <div className="mb-4 flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
@@ -442,31 +449,28 @@ export default function KelolaStokPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setMenuFilter('all')}
-                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${
-                      menuFilter === 'all'
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${menuFilter === 'all'
                         ? 'bg-green-500 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                      }`}
                   >
                     Semua
                   </button>
                   <button
                     onClick={() => setMenuFilter('Makanan')}
-                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${
-                      menuFilter === 'Makanan'
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${menuFilter === 'Makanan'
                         ? 'bg-green-500 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                      }`}
                   >
                     Makanan
                   </button>
                   <button
                     onClick={() => setMenuFilter('Minuman')}
-                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${
-                      menuFilter === 'Minuman'
+                    className={`rounded-md px-4 py-2 text-sm font-medium transition ${menuFilter === 'Minuman'
                         ? 'bg-green-500 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                      }`}
                   >
                     Minuman
                   </button>
@@ -485,14 +489,14 @@ export default function KelolaStokPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">ID</th>
-                      <th 
+                      <th
                         className="cursor-pointer px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
                         onClick={() => handleSort('Nama_Menu', 'menu')}
                       >
                         Nama
                         <SortIndicator columnKey="Nama_Menu" currentSort={menuSort} />
                       </th>
-                      <th 
+                      <th
                         className="cursor-pointer px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
                         onClick={() => handleSort('Jumlah_Stok', 'menu')}
                       >
@@ -532,21 +536,21 @@ export default function KelolaStokPage() {
                             </span>
                           </td>
                           <td className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-sm font-medium">
-                            <button 
+                            <button
                               onClick={() => setModal({ type: 'edit-menu', item: menu })}
                               className="text-teal-600 hover:text-teal-900"
                               title="Edit"
                             >
                               <Edit size={18} />
                             </button>
-                            <button 
+                            <button
                               onClick={() => setModal({ type: 'delete-menu', item: menu })}
                               className="ml-2 text-red-600 hover:text-red-900"
                               title="Delete"
                             >
                               <Trash2 size={18} />
                             </button>
-                            <button 
+                            <button
                               onClick={() => setModal({ type: 'view-menu', item: menu })}
                               className="ml-2 text-blue-600 hover:text-blue-900"
                               title="View Detail"
@@ -573,7 +577,7 @@ export default function KelolaStokPage() {
         defaultValues={modal.type === 'edit-stok' ? modal.item : undefined}
         isSubmitting={isSubmitting}
       />
-      
+
       <MenuFormModal
         isOpen={modal.type === 'add-menu' || modal.type === 'edit-menu'}
         onClose={() => setModal({ type: 'none' })}
@@ -593,8 +597,8 @@ export default function KelolaStokPage() {
         onClose={() => setModal({ type: 'none' })}
         onConfirm={modal.type === 'delete-stok' ? handleDeleteStok : handleDeleteMenu}
         itemName={
-          modal.type === 'delete-stok' 
-            ? modal.item.Nama_Stok 
+          modal.type === 'delete-stok'
+            ? modal.item.Nama_Stok
             : (modal.type === 'delete-menu' ? modal.item.Nama_Menu : '')
         }
         isDeleting={isSubmitting}

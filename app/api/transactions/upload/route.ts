@@ -1,3 +1,4 @@
+// app/api/transactions/upload/route.ts
 import { NextResponse } from 'next/server';
 import { pool } from '@/lib/db';
 import { getServerSession } from 'next-auth';
@@ -20,11 +21,54 @@ type ProcessedTransaction = {
   message: string;
 };
 
+async function createActivityLog(
+  userId: string,
+  status: 'SUCCESS' | 'FAILED',
+  fileName: string,
+  recordsProcessed: number,
+  recordsSuccess: number,
+  recordsFailed: number,
+  actionDetails?: any,
+  errorMessage?: string,
+  req?: Request
+) {
+  try {
+    const forwarded = req?.headers.get('x-forwarded-for');
+    const IP_Address = forwarded ? forwarded.split(',')[0] : req?.headers.get('x-real-ip');
+    const User_Agent = req?.headers.get('user-agent');
+
+    const logId = `LOG${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    
+    const client = await pool.connect();
+    try {
+      await client.query(`
+        INSERT INTO "Activity_Log" (
+          "ID_Log", "userId", "Activity_Type", "Action_Details",
+          "Status", "File_Name", "Records_Processed", 
+          "Records_Success", "Records_Failed", "Error_Message",
+          "IP_Address", "User_Agent"
+        )
+        VALUES ($1, $2, 'UPLOAD', $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `, [
+        logId, userId, JSON.stringify(actionDetails), status, fileName,
+        recordsProcessed, recordsSuccess, recordsFailed,
+        errorMessage || null, IP_Address || null, User_Agent || null
+      ]);
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Error creating activity log:', error);
+  }
+}
+
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
+
+  let fileName = 'unknown.xlsx';
 
   try {
     const formData = await req.formData();
@@ -36,6 +80,8 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    fileName = file.name;
 
     // Read file content
     const bytes = await file.arrayBuffer();
@@ -53,6 +99,18 @@ export async function POST(req: Request) {
     const data: TransactionRow[] = XLSX.utils.sheet_to_json(worksheet);
     
     if (data.length === 0) {
+      await createActivityLog(
+        session.user.id,
+        'FAILED',
+        fileName,
+        0,
+        0,
+        0,
+        { error: 'Empty file' },
+        'File is empty or invalid format',
+        req
+      );
+
       return NextResponse.json(
         { message: 'File is empty or invalid format' },
         { status: 400 }
@@ -211,6 +269,22 @@ export async function POST(req: Request) {
 
       await client.query('COMMIT');
 
+      // Log the upload activity
+      await createActivityLog(
+        session.user.id,
+        successCount > 0 ? 'SUCCESS' : 'FAILED',
+        fileName,
+        data.length,
+        successCount,
+        errorCount,
+        {
+          summary: { total: data.length, success: successCount, failed: errorCount },
+          fileName: fileName
+        },
+        errorCount > 0 ? `${errorCount} transactions failed` : undefined,
+        req
+      );
+
       return NextResponse.json({
         message: 'Transaction upload completed',
         summary: {
@@ -230,6 +304,20 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('Upload error:', error);
+    
+    // Log the failed upload
+    await createActivityLog(
+      session.user.id,
+      'FAILED',
+      fileName,
+      0,
+      0,
+      0,
+      { error: error.message },
+      error.message,
+      req
+    );
+    
     return NextResponse.json(
       { message: 'Error processing file', error: error.message },
       { status: 500 }

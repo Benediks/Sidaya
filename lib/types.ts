@@ -76,3 +76,27 @@ export type Transaksi = {
 export type TransaksiWithMenu = Transaksi & {
   Menu?: Menu;
 };
+
+export type ActivityType = 'EXPORT' | 'UPLOAD';
+export type ActivityStatus = 'SUCCESS' | 'FAILED';
+
+export type ActivityLog = {
+  ID_Log: string;
+  userId: string;
+  Activity_Type: ActivityType;
+  Action_Details?: string | null;
+  Timestamp: string;
+  Status: ActivityStatus;
+  File_Name?: string | null;
+  Records_Processed: number;
+  Records_Success: number;
+  Records_Failed: number;
+  Error_Message?: string | null;
+  IP_Address?: string | null;
+  User_Agent?: string | null;
+};
+
+export type ActivityLogWithUser = ActivityLog & {
+  User_Name?: string | null;
+  User_Email?: string | null;
+};
