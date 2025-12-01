@@ -10,34 +10,21 @@ export default function ExportStockButton() {
 
   const handleExport = async () => {
     setIsExporting(true);
-    
     try {
-      const response = await fetch('/api/stok/export', {
-        method: 'GET',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Export failed');
-      }
-
-      // Get filename from Content-Disposition header
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = `Sidaya_DataStok_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const response = await fetch('/api/stok/export');
       
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-        if (filenameMatch) {
-          filename = filenameMatch[1];
-        }
+      if (!response.ok) {
+        throw new Error('Export failed');
       }
 
-      // Create blob and download
+      // Get the blob from response
       const blob = await response.blob();
+      
+      // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = filename;
+      a.download = `Sidaya_DataStok_${new Date().toISOString().split('T')[0]}.pdf`;
       document.body.appendChild(a);
       a.click();
       
@@ -45,10 +32,10 @@ export default function ExportStockButton() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      toast.success('Data berhasil diexport!');
-    } catch (error: any) {
+      toast.success('Data berhasil di-export ke PDF!');
+    } catch (error) {
       console.error('Export error:', error);
-      toast.error(`Gagal mengexport data: ${error.message}`);
+      toast.error('Gagal export data');
     } finally {
       setIsExporting(false);
     }
@@ -58,17 +45,17 @@ export default function ExportStockButton() {
     <button
       onClick={handleExport}
       disabled={isExporting}
-      className="flex items-center gap-2 rounded-md bg-green-600 px-6 py-3 font-medium text-white shadow-lg transition hover:bg-green-700 disabled:bg-green-400"
+      className="flex items-center gap-2 rounded-md bg-teal-600 px-6 py-3 font-medium text-white shadow-lg transition hover:bg-teal-700 disabled:bg-teal-400"
     >
       {isExporting ? (
         <>
           <Loader2 size={20} className="animate-spin" />
-          Exporting...
+          Mengexport...
         </>
       ) : (
         <>
           <Download size={20} />
-          Export Data Stok
+          Export Data Stok (PDF)
         </>
       )}
     </button>

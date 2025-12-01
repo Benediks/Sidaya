@@ -7,6 +7,16 @@ export default withAuth(
     const token = req.nextauth.token;
 
     // --- LOGIKA PROTEKSI ROLE ---
+    
+    // Jika user mencoba mengakses /dashboard
+    if (req.nextUrl.pathname.startsWith("/dashboard")) {
+      // Dan role-nya BUKAN owner
+      if (token?.role !== "owner") {
+        // Redirect ke halaman /stok
+        return NextResponse.redirect(new URL("/stok", req.url));
+      }
+    }
+
     // Jika user mencoba mengakses /promo
     if (req.nextUrl.pathname.startsWith("/promo")) {
       // Dan role-nya BUKAN owner
@@ -21,6 +31,15 @@ export default withAuth(
       // Dan role-nya BUKAN owner ATAU karyawan (misal: role tidak dikenal)
       if (token?.role !== "owner" && token?.role !== "karyawan") {
          // Redirect ke halaman login
+        return NextResponse.redirect(new URL("/login", req.url));
+      }
+    }
+
+    // Jika user mencoba mengakses /activity-logs
+    if (req.nextUrl.pathname.startsWith("/activity-logs")) {
+      // Hanya owner dan karyawan yang bisa mengakses
+      if (token?.role !== "owner" && token?.role !== "karyawan") {
+        // Redirect ke halaman login
         return NextResponse.redirect(new URL("/login", req.url));
       }
     }
@@ -41,7 +60,9 @@ export default withAuth(
 // 'matcher' menentukan halaman mana yang akan dilindungi oleh middleware ini
 export const config = {
   matcher: [
-    "/stok/:path*", // Lindungi semua halaman /stok
-    "/promo/:path*", // Lindungi semua halaman /promo
+    "/dashboard/:path*", // Lindungi semua halaman /dashboard (OWNER only)
+    "/stok/:path*",      // Lindungi semua halaman /stok (OWNER & KARYAWAN)
+    "/promo/:path*",     // Lindungi semua halaman /promo (OWNER only)
+    "/activity-logs/:path*", // Lindungi halaman activity logs (OWNER & KARYAWAN)
   ],
 };
